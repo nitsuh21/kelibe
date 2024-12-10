@@ -2,161 +2,153 @@
 
 import React from 'react'
 import Sidebar from '@/components/Side-bar'
-import Rsidebar, { ProfileCard } from '@/components/Rside-bar'
-import Homecard from '@/components/Home-card'
-import { IoEyeSharp, IoHeartSharp, IoPeopleSharp } from "react-icons/io5";
+import Rsidebar from '@/components/Rside-bar'
+import { motion } from 'framer-motion'
+import { 
+  SparklesIcon, 
+  HeartIcon, 
+  UserGroupIcon,
+  PencilIcon,
+  BookOpenIcon
+} from '@heroicons/react/24/outline'
 import Image from 'next/image'
+import Link from 'next/link'
 
-const page = () => {
+const profileData = {
+  name: "Sarah Chen",
+  title: "Tech Innovator & Growth Enthusiast",
+  image: "/images/pp4.jpg",
+  categories: [
+    {
+      id: "core-values",
+      name: "Core Values and Identity",
+      description: "Your personality, beliefs, and values that define who you are",
+      image: "/Images/core-values.webp",
+      completionStatus: "4/5 questions answered"
+    },
+    {
+      id: "growth-mindset",
+      name: "Growth Mindset",
+      description: "Your ability to learn, adapt, and thrive in changing environments",
+      image: "/Images/mindset.webp",
+      completionStatus: "3/5 questions answered"
+    },
+    {
+      id: "aspirations",
+      name: "Achieving Goals",
+      description: "The determination and effort you put into reaching your milestones",
+      image: "/Images/aspirations.png",
+      completionStatus: "5/5 questions answered"
+    }
+  ],
+  recentActivity: [
+    { type: "match", name: "James Wilson", time: "2h ago" },
+    { type: "like", name: "Emma Rodriguez", time: "5h ago" },
+    { type: "view", name: "Michael Chang", time: "1d ago" }
+  ]
+}
+
+export default function ProfilePage() {
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <main className="flex-1 p-4 lg:ml-64 lg:mr-64">
-        {/* Profile Card for Mobile */}
-        <div className="lg:hidden mb-6">
-          <ProfileCard />
-        </div>
-
-        {/* Main content */}
-        <div className="space-y-6">
-          <div className="relative">
-            <input 
-              type="search" 
-              placeholder='Search here' 
-              className='w-full border border-gray-200 text-gray-700 rounded-full p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-[#6666FF] transition-all' 
-            />
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        <div className="max-w-5xl mx-auto space-y-6">
+          {/* Hero Section */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative bg-gradient-to-r from-[#6666FF] to-[#8A8AFF] rounded-2xl p-6 text-white overflow-hidden"
+          >
+            <div className="absolute right-0 top-0 w-1/3 h-full opacity-10">
+              <svg className="w-full h-full" viewBox="0 0 100 100" fill="none">
+                <circle cx="90" cy="10" r="50" fill="white" />
+                <circle cx="10" cy="90" r="30" fill="white" />
               </svg>
-            </span>
-          </div>
-
-          <Homecard/>
-
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
-          {[
-            { label: 'Profile Views', icon: <IoEyeSharp />, color: 'bg-blue-100', count: 45 },
-            { label: 'Likes', icon: <IoHeartSharp />, color: 'bg-red-100', count: 30 },
-            { label: 'Matches', icon: <IoPeopleSharp />, color: 'bg-green-100', count: 15 },
-          ].map((item, index) => (
-            <div
-              key={index}
-              className='flex items-center p-6 space-x-4 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow'
-            >
-              <div className={`p-3 ${item.color} rounded-full`}>
-                <div className='text-2xl text-[#6666FF]'>{item.icon}</div>
+            </div>
+            <div className="flex items-center gap-6">
+              <div className="relative w-24 h-24 rounded-2xl overflow-hidden ring-4 ring-white/20">
+                <Image src={profileData.image} alt="Profile" fill className="object-cover" />
               </div>
-              <div className='flex flex-col'>
-                <p className='text-2xl font-semibold'>{item.count}</p>
-                <p className='text-gray-600'>{item.label}</p>
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold">{profileData.name}</h1>
+                <p className="text-white/80">{profileData.title}</p>
+                <div className="flex gap-4 mt-4">
+                  <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl flex items-center gap-2 transition-colors">
+                    <PencilIcon className="w-4 h-4" />
+                    Edit Profile
+                  </button>
+                  <button className="px-4 py-2 bg-white text-[#6666FF] rounded-xl hover:bg-white/90 transition-colors">
+                    View Public Profile
+                  </button>
+                </div>
               </div>
             </div>
-          ))}
-        </div>
+          </motion.div>
 
-
-          <div className='space-y-6'>
-            <h2 className='text-2xl font-semibold text-center'>Continue Building ...</h2>
-            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'>
-            {[
-              {
-                id: 1,
-                image: '/Images/core-values.webp',
-                tag: 'Core Values and Identity',
-                description: 'Your personality, beliefs, and values that define who you are.',
-                progressColor: 'bg-[#6666FF]',
-                progressWidth: 'w-[45%]',
-              },
-              {
-                id: 2,
-                image: '/Images/mindset.webp',
-                tag: 'Growth Mindset',
-                description: 'Your ability to learn, adapt, and thrive in changing environments.',
-                progressColor: 'bg-[#FF6666]',
-                progressWidth: 'w-[75%]',
-              },
-              {
-                id: 3,
-                image: '/Images/aspirations.png',
-                tag: 'Achieving Goals',
-                description: 'The determination and effort you put into reaching your milestones.',
-                progressColor: 'bg-[#66FF66]',
-                progressWidth: 'w-[60%]',
-              },
-            ].map((item) => (
-              <div
-                key={item.id}
-                className='flex flex-col bg-white p-6 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl'
-              >
-                <div className='relative aspect-video mb-4 overflow-hidden rounded-xl'>
-                  <Image src={item.image} fill alt={item.tag} className='object-cover' />
-                </div>
-                <div className='space-y-4'>
-                  <span className={`inline-block px-4 py-1 rounded-full text-sm text-white ${item.progressColor}`}>
-                    {item.tag}
-                  </span>
-                  <p className='text-sm text-gray-600'>{item.description}</p>
-                  <div className='w-full bg-gray-200 rounded-full h-2'>
-                    <div
-                      className={`${item.progressColor} h-2 rounded-full transition-all duration-300 ${item.progressWidth}`}
-                    ></div>
+          {/* Categories Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {profileData.categories.map((category) => (
+              <Link href={`/profile/category/${category.id}`} key={category.id}>
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                >
+                  <div className="relative aspect-video mb-4 overflow-hidden rounded-xl">
+                    <Image src={category.image} fill alt={category.name} className="object-cover" />
                   </div>
-                </div>
-              </div>
+                  <h3 className="font-semibold text-lg mb-2">{category.name}</h3>
+                  <p className="text-sm text-gray-600 mb-4">{category.description}</p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-[#6666FF]">{category.completionStatus}</span>
+                    <span className="text-sm text-[#6666FF]">View Details →</span>
+                  </div>
+                </motion.div>
+              </Link>
             ))}
           </div>
 
-          </div>
-
-          {/* Table Section */}
-          <div className='w-full bg-white rounded-2xl shadow-lg p-6'>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className='text-2xl font-semibold'>Recent Matches</h2>
-              <button className="text-[#6666FF] hover:underline">View All</button>
+          {/* Recent Activity */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl p-6 shadow-sm"
+          >
+            <h2 className="text-lg font-semibold flex items-center gap-2 mb-6">
+              <UserGroupIcon className="w-5 h-5 text-[#6666FF]" />
+              Recent Activity
+            </h2>
+            <div className="space-y-4">
+              {profileData.recentActivity.map((activity, idx) => (
+                <div key={idx} className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-xl ${
+                      activity.type === 'match' ? 'bg-green-100 text-green-600' :
+                      activity.type === 'like' ? 'bg-pink-100 text-pink-600' :
+                      'bg-blue-100 text-blue-600'
+                    }`}>
+                      {activity.type === 'match' ? <UserGroupIcon className="w-5 h-5" /> :
+                       activity.type === 'like' ? <HeartIcon className="w-5 h-5" /> :
+                       <BookOpenIcon className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{activity.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {activity.type === 'match' ? 'New match' :
+                         activity.type === 'like' ? 'Liked your profile' :
+                         'Viewed your profile'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-500">{activity.time}</span>
+                </div>
+              ))}
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Match Level</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-3">
-                        <div className="relative w-10 h-10">
-                          <Image 
-                            src="/Images/pp2.jpg"
-                            alt="Profile"
-                            fill
-                            className="rounded-full object-cover"
-                          />
-                        </div>
-                        <div className="text-sm text-gray-900">John Doe</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">High</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button className='bg-[#6666FF] hover:bg-[#5555ee] text-white px-4 py-2 rounded-full transition-colors'>
-                        View Profile
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+          </motion.div>
         </div>
       </main>
       <Rsidebar />
     </div>
   )
 }
-
-export default page
