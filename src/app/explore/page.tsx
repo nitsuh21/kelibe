@@ -260,8 +260,9 @@ const ExplorePage = () => {
           ))}
         </motion.div>
       </main>
-
+      <div className='hidden lg:block'>
       <Rsidebar />
+      </div>
     </div>
   );
 };

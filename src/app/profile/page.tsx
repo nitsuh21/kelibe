@@ -1,154 +1,114 @@
-'use client'
+'use client';
 
-import React from 'react'
-import Sidebar from '@/components/Side-bar'
-import Rsidebar from '@/components/Rside-bar'
-import { motion } from 'framer-motion'
-import { 
-  SparklesIcon, 
-  HeartIcon, 
-  UserGroupIcon,
-  PencilIcon,
-  BookOpenIcon
-} from '@heroicons/react/24/outline'
-import Image from 'next/image'
-import Link from 'next/link'
-
-const profileData = {
-  name: "Sarah Chen",
-  title: "Tech Innovator & Growth Enthusiast",
-  image: "/images/pp4.jpg",
-  categories: [
-    {
-      id: "core-values",
-      name: "Core Values and Identity",
-      description: "Your personality, beliefs, and values that define who you are",
-      image: "/Images/core-values.webp",
-      completionStatus: "4/5 questions answered"
-    },
-    {
-      id: "growth-mindset",
-      name: "Growth Mindset",
-      description: "Your ability to learn, adapt, and thrive in changing environments",
-      image: "/Images/mindset.webp",
-      completionStatus: "3/5 questions answered"
-    },
-    {
-      id: "aspirations",
-      name: "Achieving Goals",
-      description: "The determination and effort you put into reaching your milestones",
-      image: "/Images/aspirations.png",
-      completionStatus: "5/5 questions answered"
-    }
-  ],
-  recentActivity: [
-    { type: "match", name: "James Wilson", time: "2h ago" },
-    { type: "like", name: "Emma Rodriguez", time: "5h ago" },
-    { type: "view", name: "Michael Chang", time: "1d ago" }
-  ]
-}
+import React from 'react';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import Image from 'next/image';
+import Sidebar from '@/components/Side-bar';
+import Rsidebar from '@/components/Rside-bar';
+import { Category, categories } from './data';
+import { useAuth } from '@/context/AuthContext';
+import AuthDebug from '@/components/AuthDebug';
 
 export default function ProfilePage() {
+  const { user, isLoading, error, isAuthenticated } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent"></div>
+        <AuthDebug />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+        <div className="text-red-600">{error}</div>
+        <AuthDebug />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    // Add a small delay before redirecting to ensure state is properly updated
+    setTimeout(() => {
+      window.location.href = '/auth/signin';
+    }, 100);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent"></div>
+        <AuthDebug />
+      </div>
+    );
+  }
+
+  const userFullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Anonymous';
+  const userEmail = user.email || 'Email not set';
+  const userProfileImage = user.profile?.profile_image || '/placeholder-avatar.jpg';
+  const userLocation = user.profile?.location || 'Location not set';
+  const userBio = user.profile?.bio || 'No bio yet';
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      <main className="flex-1 p-4 lg:ml-64 lg:mr-64">
-        <div className="max-w-5xl mx-auto space-y-6">
-          {/* Hero Section */}
-          <motion.div 
+      <main className="flex-1 p-4 lg:ml-64">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative bg-gradient-to-r from-[#6666FF] to-[#8A8AFF] rounded-2xl p-6 text-white overflow-hidden"
+            className="bg-white p-6 rounded-xl shadow-sm"
           >
-            <div className="absolute right-0 top-0 w-1/3 h-full opacity-10">
-              <svg className="w-full h-full" viewBox="0 0 100 100" fill="none">
-                <circle cx="90" cy="10" r="50" fill="white" />
-                <circle cx="10" cy="90" r="30" fill="white" />
-              </svg>
-            </div>
             <div className="flex items-center gap-6">
-              <div className="relative w-24 h-24 rounded-2xl overflow-hidden ring-4 ring-white/20">
-                <Image src={profileData.image} alt="Profile" fill className="object-cover" />
+              <div className="relative w-24 h-24">
+                <Image
+                  src={userProfileImage}
+                  alt={`${userFullName}'s profile`}
+                  fill
+                  className="rounded-full object-cover"
+                />
               </div>
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold">{profileData.name}</h1>
-                <p className="text-white/80">{profileData.title}</p>
-                <div className="flex gap-4 mt-4">
-                  <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl flex items-center gap-2 transition-colors">
-                    <PencilIcon className="w-4 h-4" />
-                    Edit Profile
-                  </button>
-                  <button className="px-4 py-2 bg-white text-[#6666FF] rounded-xl hover:bg-white/90 transition-colors">
-                    View Public Profile
-                  </button>
-                </div>
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">{userFullName}</h1>
+                <p className="text-gray-500 mt-1">{userEmail}</p>
+                <p className="text-gray-500 mt-1">{userLocation}</p>
+                <p className="text-gray-600 mt-2">{userBio}</p>
               </div>
             </div>
           </motion.div>
 
-          {/* Categories Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {profileData.categories.map((category) => (
-              <Link href={`/profile/category/${category.id}`} key={category.id}>
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-all cursor-pointer"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          >
+            {Array.isArray(categories) && categories.map((category: Category) => (
+              <Link key={category.id} href={`/profile/category/${category.id}`}>
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer"
                 >
-                  <div className="relative aspect-video mb-4 overflow-hidden rounded-xl">
-                    <Image src={category.image} fill alt={category.name} className="object-cover" />
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">{category.name}</h3>
-                  <p className="text-sm text-gray-600 mb-4">{category.description}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-[#6666FF]">{category.completionStatus}</span>
-                    <span className="text-sm text-[#6666FF]">View Details →</span>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                      {category.icon}
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900">{category.title}</h3>
+                      <p className="text-sm text-gray-500 mt-1">{category.description}</p>
+                    </div>
                   </div>
                 </motion.div>
               </Link>
             ))}
-          </div>
-
-          {/* Recent Activity */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl p-6 shadow-sm"
-          >
-            <h2 className="text-lg font-semibold flex items-center gap-2 mb-6">
-              <UserGroupIcon className="w-5 h-5 text-[#6666FF]" />
-              Recent Activity
-            </h2>
-            <div className="space-y-4">
-              {profileData.recentActivity.map((activity, idx) => (
-                <div key={idx} className="flex items-center justify-between py-2">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-xl ${
-                      activity.type === 'match' ? 'bg-green-100 text-green-600' :
-                      activity.type === 'like' ? 'bg-pink-100 text-pink-600' :
-                      'bg-blue-100 text-blue-600'
-                    }`}>
-                      {activity.type === 'match' ? <UserGroupIcon className="w-5 h-5" /> :
-                       activity.type === 'like' ? <HeartIcon className="w-5 h-5" /> :
-                       <BookOpenIcon className="w-5 h-5" />}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{activity.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {activity.type === 'match' ? 'New match' :
-                         activity.type === 'like' ? 'Liked your profile' :
-                         'Viewed your profile'}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-sm text-gray-500">{activity.time}</span>
-                </div>
-              ))}
-            </div>
           </motion.div>
         </div>
       </main>
-      <Rsidebar />
+      <div className="hidden lg:block">
+        <Rsidebar />
+      </div>
+      <AuthDebug />
     </div>
-  )
+  );
 }

@@ -3,8 +3,13 @@ import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Edit3, MapPin, Award, Users } from 'lucide-react'
+import { useAppSelector } from '@/store/hooks'
+import { selectUser } from '@/store/slices/authSlice'
+
 
 const ProfileCard = () => {
+  const user = useAppSelector(selectUser);
+
   return (
     <div className="bg-gradient-to-b from-white to-gray-50 rounded-lg shadow-sm border border-gray-100 overflow-hidden">
       {/* Cover Image */}
@@ -33,7 +38,7 @@ const ProfileCard = () => {
 
         {/* Profile Info */}
         <div className="text-center mt-4 space-y-2">
-          <h3 className="text-xl font-semibold">John Doe</h3>
+          <h3 className="text-xl font-semibold">{user as any}</h3>
           <div className="inline-flex items-center px-3 py-1 bg-gray-50 rounded-full text-gray-600 text-sm">
             <MapPin className="w-4 h-4 mr-1" />
             New York, USA
