@@ -1,18 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { HiOutlineMail } from 'react-icons/hi';
 import { RiLockPasswordLine } from 'react-icons/ri';
-import { GoogleLogin } from '@react-oauth/google';
+import { toast } from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
+import withAuth from '@/components/withAuth';
 
-const SignInPage = () => {
+function SignInPage() {
   const router = useRouter();
-  const { login, googleAuth, isLoading, error, clearError } = useAuth();
-  
+  const { login, isAuthenticated, isLoading } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // If user is authenticated, redirect them
+    if (!isLoading && isAuthenticated) {
+      const savedPath = sessionStorage.getItem('redirectAfterLogin');
+      if (savedPath && savedPath !== '/auth/signin') {
+        sessionStorage.removeItem('redirectAfterLogin');
+        router.replace(savedPath);
+      } else {
+        router.replace('/profile');
+      }
+    }
+  }, [isAuthenticated, isLoading, router]);
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -27,25 +43,22 @@ const SignInPage = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setLoading(true);
+    setError(null);
+    
     try {
       await login(formData);
-      router.push('/profile');
-    } catch (err) {
-      console.error('Login failed:', err);
+      toast.success('Login successful');
+    } catch (err: any) {
+      setError(err.message);
+      if (err.message.includes('verify your email')) {
+        router.push(`/auth/verify-email?email=${encodeURIComponent(formData.email)}`);
+      } else {
+        toast.error(err.message || 'Login failed');
+      }
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handleGoogleSuccess = async (credentialResponse: any) => {
-    try {
-      await googleAuth(credentialResponse.credential);
-      router.push('/profile');
-    } catch (err) {
-      console.error('Google login failed:', err);
-    }
-  };
-
-  const handleGoogleError = () => {
-    // Handle Google sign-in error
   };
 
   const containerVariants = {
@@ -144,10 +157,10 @@ const SignInPage = () => {
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
               type="submit"
-              disabled={isLoading}
+              disabled={loading}
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
             >
-              {isLoading ? (
+              {loading ? (
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -159,30 +172,10 @@ const SignInPage = () => {
             </motion.button>
           </motion.div>
         </motion.form>
-
-        <motion.div variants={itemVariants} className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with</span>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <div className="w-full flex justify-center">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                useOneTap
-              />
-            </div>
-          </div>
-        </motion.div>
       </motion.div>
     </div>
   );
-};
+}
 
-export default SignInPage;
+// Use withAuth with requireAuth set to false
+export default withAuth(SignInPage, { requireAuth: false });

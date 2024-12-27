@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { authService } from '@/services/api/auth';
 import { RootState } from '../store';
 
@@ -25,11 +25,19 @@ interface AuthState {
   error: string | null;
 }
 
+// Helper function to safely access localStorage
+const getLocalStorageItem = (key: string): string | null => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(key);
+  }
+  return null;
+};
+
 const initialState: AuthState = {
   user: null,
-  token: localStorage.getItem('kelibe_token'),
-  refresh_token: localStorage.getItem('kelibe_token'),
-  isAuthenticated: !!localStorage.getItem('kelibe_token'),
+  token: getLocalStorageItem('kelibe_token'),
+  refresh_token: getLocalStorageItem('kelibe_token'),
+  isAuthenticated: !!getLocalStorageItem('kelibe_token'),
   isLoading: false,
   error: null,
 };
@@ -114,8 +122,24 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.token = null;
       state.user = null;
-      localStorage.removeItem('kelibe_token');
-    }
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('kelibe_token');
+      }
+    },
+    setCredentials: (
+      state,
+      action: PayloadAction<{ user: User; token: string; refresh_token: string }>
+    ) => {
+      const { user, token, refresh_token } = action.payload;
+      state.user = user;
+      state.token = token;
+      state.refresh_token = refresh_token;
+      state.isAuthenticated = true;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('kelibe_token', token);
+        localStorage.setItem('kelibe_refresh_token', refresh_token);
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -149,7 +173,9 @@ const authSlice = createSlice({
         if (action.payload.access) {
           state.isAuthenticated = true;
           state.token = action.payload.access;
-          localStorage.setItem('kelibe_token', action.payload.access);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('kelibe_token', action.payload.access);
+          }
         }
       })
       .addCase(login.rejected, (state, action) => {
@@ -166,7 +192,9 @@ const authSlice = createSlice({
         if (action.payload.access) {
           state.isAuthenticated = true;
           state.token = action.payload.access;
-          localStorage.setItem('kelibe_token', action.payload.access);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('kelibe_token', action.payload.access);
+          }
         }
         state.error = null;
       })
@@ -182,18 +210,11 @@ const authSlice = createSlice({
             ...action.payload 
           };
         }
-      })
-      // Logout
-      .addCase(logout, (state) => {
-        state.user = null;
-        state.token = null;
-        state.isAuthenticated = false;
-        localStorage.removeItem('kelibe_token');
       });
   },
 });
 
-export const { clearError, logout } = authSlice.actions;
+export const { clearError, logout, setCredentials } = authSlice.actions;
 
 // Selectors
 export const selectAuth = (state: RootState) => state.auth;

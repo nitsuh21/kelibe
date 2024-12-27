@@ -2,10 +2,11 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, LoginData, RegisterData, authService } from '@/services/api/auth';
-import { getTokens, setTokens, refreshAccessToken } from '@/services/api/client';
+import { getTokens, setTokens, refreshAccessToken } from '@/services/api/tokens';
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   isLoading: boolean;
   error: string | null;
   isAuthenticated: boolean;
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -28,44 +30,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       const { access, refresh } = getTokens();
+      console.log('Access token:', access);
+      console.log('Refresh token:', refresh);
       
       if (!access || !refresh) {
         setIsLoading(false);
         return;
       }
 
-      // Token is present, try to get the user profile
       try {
+        setToken(access);
         const userProfile = await authService.getProfile();
-        if (userProfile.user) {
-          setUser(userProfile.user);
-          setIsAuthenticated(true);
-          return;
-        }
+        setUser(userProfile);
+        setIsAuthenticated(true);
       } catch (profileError) {
-        // If profile fetch fails, try to refresh token
         try {
-          await refreshAccessToken();
-          // After refresh, try to get profile again
-          const refreshedProfile = await authService.getProfile();
-          if (refreshedProfile.user) {
-            setUser(refreshedProfile.user);
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            setToken(newToken);
+            const refreshedProfile = await authService.getProfile();
+            setUser(refreshedProfile);
             setIsAuthenticated(true);
-            return;
+          } else {
+            throw new Error('Failed to refresh token');
           }
         } catch (refreshError) {
           console.error('Token refresh failed:', refreshError);
-          // If refresh fails, logout
-          authService.logout();
-          setUser(null);
-          setIsAuthenticated(false);
+          handleLogout();
         }
       }
     } catch (err) {
       console.error('Auth initialization failed:', err);
-      authService.logout();
-      setUser(null);
-      setIsAuthenticated(false);
+      handleLogout();
     } finally {
       setIsLoading(false);
     }
@@ -75,6 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
   }, []);
 
+  const handleLogout = () => {
+    authService.logout();
+    setUser(null);
+    setToken(null);
+    setIsAuthenticated(false);
+  };
+
   const login = async (data: LoginData) => {
     try {
       setIsLoading(true);
@@ -82,22 +85,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authService.login(data);
       
       if (response.error) {
-        throw new Error(typeof response.error === 'string' ? response.error : 'Login failed');
+        throw new Error(response.error);
       }
 
-      // After successful login, fetch the user profile
-      const userProfile = await authService.getProfile();
-      if (userProfile.user) {
-        setUser(userProfile.user);
+      if (!response.email_verified) {
+        throw new Error('Please verify your email first');
+      }
+
+      const { access } = getTokens();
+      if (access) {
+        setToken(access);
+        const userProfile = await authService.getProfile();
+        setUser(userProfile);
         setIsAuthenticated(true);
       } else {
-        throw new Error('Failed to get user profile');
+        throw new Error('No access token received');
       }
     } catch (err: any) {
-      setError(err.message || 'Login failed');
-      authService.logout();
-      setUser(null);
-      setIsAuthenticated(false);
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async (data: RegisterData) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await authService.register(data);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message);
       throw err;
     } finally {
       setIsLoading(false);
@@ -111,70 +130,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authService.googleAuth(credential);
       
       if (response.error) {
-        throw new Error(typeof response.error === 'string' ? response.error : 'Google login failed');
+        throw new Error(response.error);
       }
 
-      // After successful login, fetch the user profile
-      const userProfile = await authService.getProfile();
-      if (userProfile.user) {
-        setUser(userProfile.user);
+      const { access } = getTokens();
+      if (access) {
+        setToken(access);
+        const userProfile = await authService.getProfile();
+        setUser(userProfile);
         setIsAuthenticated(true);
       } else {
-        throw new Error('Failed to get user profile');
+        throw new Error('No access token received');
       }
     } catch (err: any) {
-      setError(err.message || 'Google login failed');
-      authService.logout();
-      setUser(null);
-      setIsAuthenticated(false);
+      setError(err.message);
       throw err;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (data: RegisterData) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await authService.register(data);
-      
-      if (response.error) {
-        throw new Error(typeof response.error === 'string' ? response.error : 'Registration failed');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Registration failed');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const clearError = () => setError(null);
 
-  const logout = () => {
-    authService.logout();
-    setUser(null);
-    setIsAuthenticated(false);
-    setError(null);
-  };
-
-  const clearError = () => {
-    setError(null);
+  const value = {
+    user,
+    token,
+    isLoading,
+    error,
+    isAuthenticated,
+    login,
+    register,
+    logout: handleLogout,
+    clearError,
+    googleAuth
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        error,
-        isAuthenticated,
-        login,
-        register,
-        logout,
-        clearError,
-        googleAuth,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

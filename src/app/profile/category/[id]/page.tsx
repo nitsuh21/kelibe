@@ -1,250 +1,321 @@
-'use client'
+'use client';
 
-import React, { useState } from 'react'
-import Sidebar from '@/components/Side-bar'
-import Rsidebar from '@/components/Rside-bar'
-import { motion } from 'framer-motion'
-import { 
-  ArrowLeftIcon,
-  PencilIcon,
-  CheckIcon,
-} from '@heroicons/react/24/outline'
-import Image from 'next/image'
-import Link from 'next/link'
+import React, { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import Link from 'next/link';
+import Sidebar from '@/components/Side-bar';
+import profileService, { Category, Question, UserResponse } from '@/services/api/profile';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'react-hot-toast';
 
-const categoryData = {
-  'core-values': {
-    name: "Core Values and Identity",
-    description: "Your personality, beliefs, and values that define who you are",
-    image: "/Images/core-values.webp",
-    questions: [
-      {
-        id: 1,
-        question: "What are your core beliefs that guide your daily decisions?",
-        placeholder: "Share your fundamental principles and how they influence your choices...",
-        answer: ""
-      },
-      {
-        id: 2,
-        question: "How do you maintain authenticity in your relationships?",
-        placeholder: "Describe your approach to being genuine with others...",
-        answer: "I believe in open communication and showing vulnerability when appropriate. Being authentic means acknowledging both strengths and weaknesses."
-      },
-      {
-        id: 3,
-        question: "What values would you never compromise on?",
-        placeholder: "Explain the principles you hold most dear...",
-        answer: "Honesty, integrity, and respect for others are non-negotiable. I believe these form the foundation of any meaningful relationship."
-      },
-      {
-        id: 4,
-        question: "How do your cultural background and experiences shape your worldview?",
-        placeholder: "Reflect on how your background influences your perspective...",
-        answer: ""
-      },
-      {
-        id: 5,
-        question: "What legacy would you like to leave behind?",
-        placeholder: "Share your thoughts on the impact you want to make...",
-        answer: "I want to contribute to positive change in technology and society, ensuring that innovations benefit everyone."
-      }
-    ]
-  },
-  'growth-mindset': {
-    name: "Growth Mindset",
-    description: "Your ability to learn, adapt, and thrive in changing environments",
-    image: "/Images/mindset.webp",
-    questions: [
-      {
-        id: 1,
-        question: "How do you approach learning from failures?",
-        placeholder: "Describe your process of growing from setbacks...",
-        answer: ""
-      },
-      {
-        id: 2,
-        question: "What's your strategy for personal development?",
-        placeholder: "Share your approach to continuous improvement...",
-        answer: "I set quarterly goals, seek feedback actively, and dedicate time each week for learning new skills."
-      },
-      {
-        id: 3,
-        question: "How do you adapt to unexpected changes?",
-        placeholder: "Explain your approach to handling uncertainty...",
-        answer: ""
-      },
-      {
-        id: 4,
-        question: "What role does feedback play in your growth?",
-        placeholder: "Describe how you use feedback for improvement...",
-        answer: "I actively seek feedback from mentors and peers, viewing it as valuable data for growth."
-      },
-      {
-        id: 5,
-        question: "How do you challenge your comfort zone?",
-        placeholder: "Share examples of pushing your boundaries...",
-        answer: ""
-      }
-    ]
-  },
-  'aspirations': {
-    name: "Achieving Goals",
-    description: "The determination and effort you put into reaching your milestones",
-    image: "/Images/aspirations.png",
-    questions: [
-      {
-        id: 1,
-        question: "What are your long-term aspirations?",
-        placeholder: "Share your vision for the future...",
-        answer: "I aim to create innovative solutions that make technology more accessible and beneficial for society."
-      },
-      {
-        id: 2,
-        question: "How do you break down big goals into achievable steps?",
-        placeholder: "Describe your goal-setting process...",
-        answer: "I use the SMART framework and create monthly milestones to track progress."
-      },
-      {
-        id: 3,
-        question: "What motivates you to pursue your goals?",
-        placeholder: "Share what drives you forward...",
-        answer: "The potential to make a positive impact and continuous learning keeps me motivated."
-      },
-      {
-        id: 4,
-        question: "How do you handle setbacks in pursuing your goals?",
-        placeholder: "Explain your approach to overcoming obstacles...",
-        answer: "I view setbacks as learning opportunities and adjust my approach based on lessons learned."
-      },
-      {
-        id: 5,
-        question: "What role do others play in your goal achievement?",
-        placeholder: "Describe how relationships influence your journey...",
-        answer: "I believe in the power of mentorship and collaborative growth."
-      }
-    ]
-  }
+type ResponseValue = string | boolean | number | string[] | null;
+
+interface ResponseFormProps {
+  question: Question;
+  initialValue: ResponseValue;
+  onChange: (value: ResponseValue) => void;
+  hideEditButton?: boolean;
 }
 
-export default function CategoryPage({ params }: { params: { id: string } }) {
-  const category = categoryData[params.id as keyof typeof categoryData]
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const [answers, setAnswers] = useState(category.questions.map(q => q.answer))
-  const [hasChanges, setHasChanges] = useState(false)
+const ResponseForm: React.FC<ResponseFormProps> = ({ 
+  question, 
+  initialValue, 
+  onChange,
+  hideEditButton = false
+}) => {
+  const [isEditing, setIsEditing] = useState(true);
 
-  const handleSave = () => {
-    // Here you would typically save all changes to the backend
-    setHasChanges(false)
-    setEditingId(null)
-  }
+  const renderInput = () => {
+    switch (question.question_type) {
+      case 'short_answer':
+        return (
+          <input
+            type="text"
+            value={String(initialValue || '')}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            placeholder="Type your answer..."
+          />
+        );
+      case 'single_choice':
+        const choiceValue = String(initialValue || '');
+        return (
+          <div className="space-y-2">
+            {question.options?.map((option) => (
+              <label key={option} className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  name={`question-${question.id}`}
+                  value={option}
+                  checked={choiceValue === option}
+                  onChange={(e) => onChange(e.target.value)}
+                  className="text-pink-600 focus:ring-pink-500"
+                />
+                <span>{option}</span>
+              </label>
+            ))}
+          </div>
+        );
+      case 'multiple_choice':
+        const selectedOptions = Array.isArray(initialValue) ? initialValue : 
+                              initialValue ? [String(initialValue)] : [];
+        return (
+          <div className="space-y-2">
+            {question.options?.map((option) => (
+              <label key={option} className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  value={option}
+                  checked={selectedOptions.includes(option)}
+                  onChange={(e) => {
+                    const newValue = [...selectedOptions];
+                    if (e.target.checked) {
+                      newValue.push(option);
+                    } else {
+                      const index = newValue.indexOf(option);
+                      if (index !== -1) newValue.splice(index, 1);
+                    }
+                    onChange(newValue);
+                  }}
+                  className="text-pink-600 focus:ring-pink-500"
+                />
+                <span>{option}</span>
+              </label>
+            ))}
+          </div>
+        );
+      case 'boolean':
+        const boolValue = String(initialValue).toLowerCase() === 'true';
+        return (
+          <div className="flex space-x-4">
+            <label className="flex items-center space-x-2">
+              <input
+                type="radio"
+                name={`question-${question.id}`}
+                value="true"
+                checked={boolValue}
+                onChange={() => onChange('true')}
+                className="text-pink-600 focus:ring-pink-500"
+              />
+              <span>Yes</span>
+            </label>
+            <label className="flex items-center space-x-2">
+              <input
+                type="radio"
+                name={`question-${question.id}`}
+                value="false"
+                checked={!boolValue}
+                onChange={() => onChange('false')}
+                className="text-pink-600 focus:ring-pink-500"
+              />
+              <span>No</span>
+            </label>
+          </div>
+        );
+      case 'scale':
+        const scaleValue = initialValue ? parseInt(String(initialValue), 10) : (question.min_value || 0);
+        return (
+          <div>
+            <input
+              type="range"
+              min={question.min_value || 0}
+              max={question.max_value || 10}
+              value={scaleValue}
+              onChange={(e) => onChange(e.target.value)}
+              className="w-full"
+            />
+            <div className="text-center mt-2">
+              Current value: {scaleValue}
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
-  const handleChange = (index: number, value: string) => {
-    const newAnswers = [...answers]
-    newAnswers[index] = value
-    setAnswers(newAnswers)
-    setHasChanges(true)
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-start">
+        <p className="font-medium text-gray-900">{question.text}</p>
+        {question.required && (
+          <span className="text-sm text-red-500">*Required</span>
+        )}
+      </div>
+      {renderInput()}
+    </div>
+  );
+};
+
+function CategoryPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { user } = useAuth();
+  const [category, setCategory] = useState<Category | null>(null);
+  const [responses, setResponses] = useState<Record<number, ResponseValue>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const fetchCategoryAndResponses = async () => {
+    try {
+      if (!params.id) return;
+      
+      const categoryId = Array.isArray(params.id) ? params.id[0] : params.id;
+      
+      // Get category details which includes user_responses
+      const categoryData = await profileService.getCategoryDetail(categoryId);
+      setCategory(categoryData);
+
+      // Set responses directly from user_responses
+      if (categoryData.user_responses) {
+        const responseMap: Record<number, ResponseValue> = {};
+        Object.entries(categoryData.user_responses).forEach(([questionId, userResponse]) => {
+          if (typeof userResponse === 'string') {
+            responseMap[parseInt(questionId, 10)] = userResponse;
+          } else {
+            responseMap[parseInt(questionId, 10)] = userResponse.response;
+          }
+        });
+        setResponses(responseMap);
+      }
+    } catch (error) {
+      console.error('Error fetching category:', error);
+      toast.error('Failed to load category details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategoryAndResponses();
+  }, [params.id]);
+
+  const handleResponseChange = (questionId: number, value: ResponseValue) => {
+    setResponses(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
+  };
+
+  const handleSave = async () => {
+    if (!category) return;
+
+    setSaving(true);
+    try {
+      // Format responses for bulk update
+      const formattedResponses = Object.entries(responses)
+        .filter(([_, value]) => value !== null && value !== undefined) // Only include non-empty responses
+        .map(([questionId, response]) => ({
+          question: parseInt(questionId, 10),
+          response: response
+        }));
+
+      if (formattedResponses.length === 0) {
+        toast.error('Please answer at least one question');
+        setSaving(false);
+        return;
+      }
+
+      const requestData = {
+        category_id: category.id,
+        responses: formattedResponses
+      };
+
+      console.log('Sending request data:', requestData);
+
+      const updatedCategory = await profileService.bulkUpdateResponses(requestData);
+      setCategory(updatedCategory);
+
+      // Update responses from the new category data
+      if (updatedCategory.user_responses) {
+        const responseMap: Record<number, ResponseValue> = {};
+        Object.entries(updatedCategory.user_responses).forEach(([questionId, response]) => {
+          responseMap[parseInt(questionId, 10)] = response.response;
+        });
+        setResponses(responseMap);
+      }
+
+      toast.success('Responses saved successfully');
+      router.push('/profile');
+    } catch (error) {
+      console.error('Error saving responses:', error);
+      toast.error('Failed to save responses');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+      </div>
+    );
   }
 
   if (!category) {
-    return <div>Category not found</div>
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900">Category not found</h2>
+          <Link 
+            href="/profile"
+            className="mt-4 inline-flex items-center text-pink-600 hover:text-pink-700"
+          >
+            <ArrowLeftIcon className="w-4 h-4 mr-2" />
+            Back to Profile
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <main className="flex-1 p-4 lg:ml-64 lg:mr-64">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <Link href="/profile" className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
-                <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold">{category.name}</h1>
-                <p className="text-sm text-gray-500">{category.description}</p>
-              </div>
+      <div className="hidden md:block">
+        <Sidebar />
+      </div>
+
+      <main className="flex-1 p-6 md:p-8 md:pl-72">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center mb-8">
+            <Link 
+              href="/profile"
+              className="mr-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <ArrowLeftIcon className="w-6 h-6 text-gray-500" />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{category.title}</h1>
+              <p className="text-gray-600">{category.description}</p>
             </div>
           </div>
 
-          {/* Questions */}
-          <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-6 bg-white rounded-2xl p-6 shadow-sm">
-            {category.questions.map((question, index) => (
-              <motion.div
+          <div className="bg-white rounded-xl shadow-sm p-6 space-y-8">
+            {category.questions.map((question) => (
+              <ResponseForm
                 key={question.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="border-b border-gray-100 last:border-0 pb-6 last:pb-0"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-lg font-medium pr-8">{question.question}</h3>
-                  {editingId !== question.id && (
-                    <button
-                      type="button"
-                      onClick={() => setEditingId(question.id)}
-                      className="p-2 text-gray-400 hover:text-[#6666FF] rounded-xl transition-colors"
-                    >
-                      <PencilIcon className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-                
-                {editingId === question.id ? (
-                  <div className="space-y-4">
-                    <textarea
-                      className="w-full p-4 bg-gray-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6666FF] min-h-[120px] text-gray-700"
-                      placeholder={question.placeholder}
-                      value={answers[index]}
-                      onChange={(e) => handleChange(index, e.target.value)}
-                      autoFocus
-                    />
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-sm text-gray-500">
-                        {answers[index]?.length || 0} characters
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setEditingId(null)}
-                        className="text-[#6666FF] hover:underline"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="min-h-[60px] text-gray-600 whitespace-pre-wrap">
-                    {answers[index] || (
-                      <span className="text-gray-400 italic">Click the pencil icon to add your thoughts...</span>
-                    )}
-                  </div>
-                )}
-              </motion.div>
+                question={question}
+                initialValue={responses[question.id]}
+                onChange={(value) => handleResponseChange(question.id, value)}
+              />
             ))}
-            
-            {/* Update Button */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex justify-end pt-6 border-t border-gray-100"
-            >
+
+            <div className="flex justify-end pt-4">
               <button
-                type="submit"
-                disabled={!hasChanges}
-                className={`px-8 py-3 rounded-xl flex items-center gap-2 font-medium ${
-                  hasChanges 
-                    ? 'bg-[#6666FF] text-white hover:bg-[#5555ee]' 
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                } transition-colors`}
+                onClick={handleSave}
+                disabled={saving}
+                className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <CheckIcon className="w-5 h-5" />
-                Update Answers
+                {saving ? 'Saving...' : 'Save Responses'}
               </button>
-            </motion.div>
-          </form>
+            </div>
+          </div>
         </div>
       </main>
-      <Rsidebar />
     </div>
-  )
+  );
 }
+
+export default CategoryPage;

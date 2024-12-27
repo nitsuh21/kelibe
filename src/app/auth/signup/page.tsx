@@ -9,6 +9,7 @@ import { HiOutlineMail } from 'react-icons/hi';
 import { RiLockPasswordLine } from 'react-icons/ri';
 import { authService } from '@/services/api/auth';
 import { GoogleLogin } from '@react-oauth/google';
+import toast from 'react-hot-toast';
 
 const SignUpPage = () => {
   const router = useRouter();
@@ -38,23 +39,16 @@ const SignUpPage = () => {
       return;
     }
 
-    const response = await authService.register(formData);
-    
-    if (response.error) {
-      // Handle different error formats from the API
-      if (typeof response.error === 'string') {
-        setError(response.error);
-      } else if (typeof response.error === 'object') {
-        // Handle error object with arrays of error messages
-        const firstError = Object.values(response.error)[0]?.[0];
-        setError(firstError || 'Registration failed');
-      }
-    } else {
-      // Redirect to email verification page
+    try {
+      const response = await authService.register(formData);
+      toast.success(response.message || 'Registration successful');
       router.push(`/auth/verify?email=${encodeURIComponent(formData.email)}`);
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   const handleGoogleSuccess = async (credentialResponse: any) => {

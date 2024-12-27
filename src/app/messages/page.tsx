@@ -83,7 +83,7 @@ export default function MessagesPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      <main className="flex-1 p-4 lg:ml-64 lg:mr-64">
+      <main className="flex-1 pl-10 lg:ml-64 lg:mr-64">
         <div className="bg-white rounded-2xl shadow-sm h-[calc(100vh-2rem)] flex overflow-hidden">
           {/* Conversations List */}
           <div className="w-1/3 border-r border-gray-200">
@@ -209,7 +209,6 @@ export default function MessagesPage() {
           </div>
         </div>
       </main>
-      <Rsidebar />
     </div>
   )
 }

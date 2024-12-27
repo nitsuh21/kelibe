@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { authService } from '@/services/api/auth';
+import toast from 'react-hot-toast';
 
 const VerifyPage = () => {
   const router = useRouter();
@@ -72,15 +73,16 @@ const VerifyPage = () => {
       return;
     }
 
-    const response : any = await authService.verifyEmail(email, otpString);
-    
-    if (response.error) {
-      setError(response.error);
-    } else {
+    try {
+      const response = await authService.verifyEmail(email, otpString);
+      toast.success(response.message || 'Email verified successfully');
       router.push('/auth/signin');
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   const handleResendOtp = async () => {
@@ -89,16 +91,17 @@ const VerifyPage = () => {
     setIsLoading(true);
     setError(null);
 
-    const response : any = await authService.resendOtp(email);
-    
-    if (response.error) {
-      setError(response.error);
-    } else {
+    try {
+      const response = await authService.resendOtp(email);
+      toast.success(response.message || 'Verification code sent successfully');
       setCountdown(30);
       setCanResend(false);
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   const containerVariants = {

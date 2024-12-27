@@ -4,6 +4,8 @@ import "./globals.css";
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { Providers } from '@/store/provider';
 import { AuthProvider } from '@/context/AuthContext';
+import Navigation from '@/components/Navigation';
+import { Toaster } from 'react-hot-toast';
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -35,6 +37,8 @@ export default function RootLayout({
           <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!}>
             <AuthProvider>
               {children}
+              <Navigation />
+              <Toaster position="bottom-center" />
             </AuthProvider>
           </GoogleOAuthProvider>
         </Providers>

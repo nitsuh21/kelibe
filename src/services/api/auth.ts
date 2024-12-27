@@ -1,213 +1,109 @@
-import apiClient, { setTokens } from './client';
+import { AxiosError } from 'axios';
 import { API_BASE_URL } from '../config/constants';
+import { apiClient } from './client';
+import { getTokens, setTokens } from './tokens';
 
-const TOKEN_KEY = 'kelibe_token';
+export interface LoginData {
+  email: string;
+  password: string;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+}
 
 export interface User {
   id: number;
   email: string;
   first_name: string;
   last_name: string;
-  email_verified: boolean;
-  profile: {
-    bio?: string;
-    location?: string;
-    profile_image?: string;
-  } | null;
+  is_verified: boolean;
 }
 
-interface AuthResponse {
-  refresh?: string | null;
-  access?: string | null;
-  error?: string | Record<string, string[]>;
-  refresh_token?: string | null;
-  user?: User;
+export interface AuthResponse {
+  error?: any;
+  access: string;
+  refresh: string;
+  user: User;
+  message?: string;
+  email_verified?: boolean;
 }
 
-interface LoginData {
-  email: string;
-  password: string;
+export interface ErrorResponse {
+  detail?: string;
+  [key: string]: any;
 }
-
-interface RegisterData {
-  email: string;
-  password: string;
-  password2: string;
-}
-
-const isBrowser = typeof window !== 'undefined';
-
-const setAuthToken = (token: string) => {
-  if (isBrowser) {
-    localStorage.setItem(TOKEN_KEY, token);
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  }
-};
-
-const clearAuthToken = () => {
-  if (isBrowser) {
-    localStorage.removeItem(TOKEN_KEY);
-    delete apiClient.defaults.headers.common['Authorization'];
-  }
-};
-
-const getAuthToken = () => {
-  if (isBrowser) {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (token) {
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    }
-    return token;
-  }
-  return null;
-};
 
 export const authService = {
-  async init(): Promise<void> {
-    // Initialization is now handled by the API client
-  },
-
   async register(data: RegisterData): Promise<AuthResponse> {
     try {
-      const response = await apiClient.post(`${API_BASE_URL}/auth/register/`, data);
-      return response.data;
-    } catch (error: any) {
+      const response = await apiClient.post<AuthResponse>('/auth/register/', data);
+      const { access, refresh } = response.data;
+      setTokens(access, refresh);
       return {
-        error: error.response?.data || 'Registration failed'
+        ...response.data,
+        message: 'Registration successful. Please check your email for verification code.'
       };
-    }
-  },
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorData = axiosError.response?.data;
+      let errorMessage = 'Registration failed';
 
-  async verifyEmail(email: string, otp: string): Promise<AuthResponse> {
-    try {
-      const response = await apiClient.post(`${API_BASE_URL}/auth/verify-email/`, {
-        email,
-        otp
-      });
-      return response.data;
-    } catch (error: any) {
-      return {
-        error: error.response?.data || 'Email verification failed'
-      };
-    }
-  },
+      if (errorData?.detail) {
+        errorMessage = errorData.detail;
+      } else if (errorData?.email?.[0]) {
+        errorMessage = errorData.email[0];
+      }
 
-  async resendOtp(email: string): Promise<AuthResponse> {
-    try {
-      const response = await apiClient.post(`${API_BASE_URL}/auth/resend-otp/`, {
-        email
-      });
-      return response.data;
-    } catch (error: any) {
-      return {
-        error: error.response?.data || 'OTP resend failed'
-      };
+      throw new Error(errorMessage);
     }
   },
 
   async login(data: LoginData): Promise<AuthResponse> {
     try {
-      const response = await apiClient.post(`${API_BASE_URL}/auth/token/`, data);
-      if (response.data.access && response.data.refresh) {
-        setTokens(response.data.access, response.data.refresh);
-      }
+      const response = await apiClient.post<AuthResponse>('/auth/token/', data);
+      const { access, refresh } = response.data;
+      setTokens(access, refresh);
       return response.data;
-    } catch (error: any) {
-      console.error('Login failed:', error);
-      return {
-        error: error.response?.data?.detail || error.response?.data || 'Login failed'
-      };
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      throw new Error(axiosError.response?.data?.detail || 'Login failed');
+    }
+  },
+
+  async getProfile(): Promise<User> {
+    try {
+      const response = await apiClient.get<User>('/auth/profile/');
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      throw new Error(axiosError.response?.data?.detail || 'Failed to fetch profile');
     }
   },
 
   async googleAuth(credential: string): Promise<AuthResponse> {
     try {
-      const response = await apiClient.post(`${API_BASE_URL}/auth/google/`, {
-        credential
+      const response = await apiClient.post<AuthResponse>('/auth/google/', {
+        credential,
       });
-      if (response.data.access && response.data.refresh) {
-        setTokens(response.data.access, response.data.refresh);
-      }
+      const { access, refresh } = response.data;
+      setTokens(access, refresh);
       return response.data;
-    } catch (error: any) {
-      return {
-        error: error.response?.data || 'Google authentication failed'
-      };
-    }
-  },
-
-  async refreshToken(refresh: string): Promise<AuthResponse> {
-    try {
-      const response = await apiClient.post(`${API_BASE_URL}/auth/token/refresh/`, {
-        refresh
-      });
-      return response.data;
-    } catch (error: any) {
-      return {
-        error: error.response?.data || 'Token refresh failed'
-      };
-    }
-  },
-
-  async getProfile(): Promise<AuthResponse> {
-    try {
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error('No auth token found');
-      }
-      const response = await apiClient.get(`${API_BASE_URL}/auth/profile/`);
-      console.log('response from getProfile in api:', response.data);
-      return {
-        user: response.data,
-        access: token,
-        refresh: localStorage.getItem('kelibe_refresh_token')
-      };
-    } catch (error: any) {
-      clearAuthToken(); // Clear invalid token
-      throw error;
-    }
-  },
-
-  async updateProfile(data: Partial<User>): Promise<AuthResponse> {
-    try {
-      const response = await apiClient.patch(`${API_BASE_URL}/auth/profile/`, data);
-      return { user: response.data };
-    } catch (error: any) {
-      return {
-        error: error.response?.data || 'Failed to update profile'
-      };
-    }
-  },
-
-  async logout() {
-    try {
-      await apiClient.post(`${API_BASE_URL}/auth/logout/`);
     } catch (error) {
-      console.error('Logout failed:', error);
-    } finally {
-      clearAuthToken();
+      const axiosError = error as AxiosError<ErrorResponse>;
+      throw new Error(axiosError.response?.data?.detail || 'Google authentication failed');
     }
   },
 
-  async validateToken(): Promise<boolean> {
-    try {
-      const token = getAuthToken();
-      if (!token) return false;
-      
-      const response = await apiClient.post(`${API_BASE_URL}/auth/token/verify/`, {
-        token
-      });
-      return response.status === 200;
-    } catch (error) {
-      clearAuthToken(); // Clear invalid token
-      return false;
-    }
+  logout() {
+    setTokens(null, null);
   },
 
   isAuthenticated(): boolean {
-    return !!getAuthToken();
-  }
+    const { access } = getTokens();
+    return !!access;
+  },
 };
-
-// Initialize auth service
-authService.init();

@@ -1,68 +1,25 @@
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '../config/constants';
+import { getTokens, refreshAccessToken, setTokens, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from './tokens';
 
-const ACCESS_TOKEN_KEY = 'kelibe_token';
-const REFRESH_TOKEN_KEY = 'kelibe_refresh_token';
-
-const apiClient = axios.create({
+// Create axios instance
+export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Function to get tokens
-const getTokens = () => ({
-  access: localStorage.getItem(ACCESS_TOKEN_KEY),
-  refresh: localStorage.getItem(REFRESH_TOKEN_KEY),
-});
-
-// Function to set tokens
-const setTokens = (access: string | null, refresh: string | null) => {
-  if (access) {
-    localStorage.setItem(ACCESS_TOKEN_KEY, access);
-  } else {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-  }
-  if (refresh) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
-  } else {
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-  }
-};
-
-// Function to refresh token
-const refreshAccessToken = async () => {
-  const { refresh } = getTokens();
-  if (!refresh) throw new Error('No refresh token available');
-
-  try {
-    const response = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
-      refresh,
-    });
-    
-    if (response.data.access) {
-      setTokens(response.data.access, refresh); // Keep the same refresh token
-      return response.data.access;
-    }
-    throw new Error('No access token in refresh response');
-  } catch (error) {
-    // If refresh fails, clear all tokens
-    setTokens(null, null);
-    throw error;
-  }
-};
-
 // Request interceptor
 apiClient.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     const { access } = getTokens();
-    if (access) {
+    if (access && config.headers) {
       config.headers.Authorization = `Bearer ${access}`;
     }
     return config;
   },
-  (error) => {
+  (error: AxiosError) => {
     return Promise.reject(error);
   }
 );
@@ -70,8 +27,12 @@ apiClient.interceptors.request.use(
 // Response interceptor
 apiClient.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+  async (error: AxiosError) => {
+    if (!error.config) {
+      return Promise.reject(error);
+    }
+
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     // If error is 401 and we haven't tried to refresh token yet
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -79,11 +40,13 @@ apiClient.interceptors.response.use(
 
       try {
         const newAccessToken = await refreshAccessToken();
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        }
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // If refresh fails, redirect to login
-        window.location.href = '/auth/signin';
+        // If refresh fails, clear tokens but don't redirect (let the auth context handle it)
+        setTokens(null, null);
         return Promise.reject(refreshError);
       }
     }

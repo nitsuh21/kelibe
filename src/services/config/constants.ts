@@ -1,12 +1,13 @@
 export const API_BASE_URL = 'http://localhost:8000/api/v1';
+export const FRONTEND_URL = 'http://localhost:3000';
 
 export const ENDPOINTS = {
   AUTH: {
-    REGISTER: '/auth/register/',
-    LOGIN: '/auth/token/',
-    REFRESH: '/auth/token/refresh/',
-    VERIFY_EMAIL: '/auth/verify-email/',
-    GOOGLE: '/auth/google/',
+    REGISTER: '/register/',
+    LOGIN: '/token/',
+    REFRESH: '/token/refresh/',
+    VERIFY_EMAIL: '/verify-email/',
+    GOOGLE: '/google/',
   },
   PROFILE: {
     GET: '/accounts/profile/',
